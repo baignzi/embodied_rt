@@ -1,0 +1,28 @@
+# EmbodiedRT 系统配置
+# 用法: ros2 launch embodied_rt embodied_rt.launch.py
+
+# ===== VLA推理节点 =====
+vla_inference_node:
+  ros__parameters:
+    mock: true                        # true=模拟模式, false=真实模型
+    instruction: "pick up the cup and place it on the shelf"
+    rate_hz: 2.0                      # mock模式下的动作发布频率
+
+# ===== 实时控制器 =====
+real_time_controller:
+  ros__parameters:
+    frequency: 1000.0                 # 控制频率 Hz
+    # Franka Panda 7-DOF PID参数
+    kp: [50.0, 45.0, 40.0, 35.0, 30.0, 25.0, 20.0]
+    ki: [0.5, 0.4, 0.3, 0.2, 0.1, 0.1, 0.05]
+    kd: [2.0, 1.8, 1.5, 1.0, 0.8, 0.5, 0.3]
+    max_output: [3.0, 2.5, 2.0, 1.5, 1.0, 0.8, 0.5]
+
+# ===== 安全监控 =====
+safety_monitor:
+  ros__parameters:
+    # Franka Panda 关节限位 (rad)
+    joint_lower: [-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973]
+    joint_upper: [ 2.8973,  1.7628,  2.8973,  3.0718,  2.8973,  5.0265,  2.8973]
+    max_velocity: 2.0                 # rad/s
+    max_effort: 3.0                   # N·m

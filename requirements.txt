@@ -1,0 +1,15 @@
+# EmbodiedRT Python依赖
+# VLA推理核心依赖
+torch>=2.0.0
+transformers>=4.30.0
+numpy>=1.24.0
+
+# ROS2 Python客户端库（仅ROS2环境需要，非ROS2环境下可省略）
+# 安装方式: sudo apt install ros-iron-rclpy 或 pip install rclpy
+# rclpy>=3.0.0
+
+# 图像处理（VLA输入预处理）
+Pillow>=9.5.0
+
+# 仿真与可视化（可选，MuJoCo仿真环境）
+# mujoco>=3.0.0

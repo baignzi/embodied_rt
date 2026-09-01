@@ -78,10 +78,14 @@ else()
     message(STATUS "EmbodiedRT: MoveIt2 NOT found — standalone linear fallback")
 endif()
 
-# --- VLA推理节点 (Python) ---
+# --- Python 脚本 ---
 install(PROGRAMS src/vla_inference_node.py
     DESTINATION lib/${PROJECT_NAME}
     RENAME vla_inference_node
+)
+install(PROGRAMS src/benchmark_node.py
+    DESTINATION lib/${PROJECT_NAME}
+    RENAME benchmark_node
 )
 
 # --- 安装可执行文件 ---

@@ -7,18 +7,20 @@
 #include <memory>
 
 // ===== MoveIt2 可选依赖 =====
-#if __has_include(<moveit/move_group_interface/move_group_interface.h>)
-  #define HAS_MOVEIT 1
-  #include <moveit/move_group_interface/move_group_interface.h>
-  #include <tf2/LinearMath/Quaternion.hpp>
-  #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-#elif __has_include(<moveit/move_group_interface/move_group_interface.hpp>)
-  #define HAS_MOVEIT 1
-  #include <moveit/move_group_interface/move_group_interface.hpp>
-  #include <tf2/LinearMath/Quaternion.hpp>
-  #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-#else
+// HAS_MOVEIT 由 CMake 控制，避免头文件存在但链接失败的问题
+#ifndef HAS_MOVEIT
   #define HAS_MOVEIT 0
+#endif
+
+#if HAS_MOVEIT
+// CMake 检测头文件扩展名：Humble 用 .h，Iron+ 用 .hpp
+#  ifdef MOVEIT_HEADER_HPP
+#    include <moveit/move_group_interface/move_group_interface.hpp>
+#  else
+#    include <moveit/move_group_interface/move_group_interface.h>
+#  endif
+#  include <tf2/LinearMath/Quaternion.hpp>
+#  include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #endif
 
 // ===== 简易 JSON 解析（避免依赖 nlohmann/json） =====
@@ -129,14 +131,7 @@ bool TrajectoryGenerator::plan_with_moveit(
         return false;
     }
 
-    // Humble: plan.trajectory_ ; Iron+: plan.trajectory
-    #if __has_include(<moveit/planning_scene/planning_scene.h>)
-      // 较新版本
-      auto traj_msg = plan.trajectory_.joint_trajectory;
-    #else
-      // Humble 兼容
-      auto traj_msg = plan.trajectory_.joint_trajectory;
-    #endif
+    auto traj_msg = plan.trajectory_.joint_trajectory;
 
     resample(traj_msg, 0.01);  // 100Hz
     out_traj = traj_msg;

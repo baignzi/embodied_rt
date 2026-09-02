@@ -39,7 +39,7 @@ target_link_libraries(safety_monitor
 target_include_directories(safety_monitor PRIVATE src)
 
 # --- 轨迹生成器 ---
-# MoveIt2 为可选依赖，代码中用 __has_include 检测
+# MoveIt2 为可选依赖，由 CMake 控制 HAS_MOVEIT 宏
 # 无 MoveIt2 时自动降级为 standalone 线性插值模式
 find_package(moveit_ros_planning_interface QUIET)
 find_package(tf2 QUIET)
@@ -76,6 +76,19 @@ if(moveit_ros_planning_interface_FOUND)
     endif()
 else()
     message(STATUS "EmbodiedRT: MoveIt2 NOT found — standalone linear fallback")
+endif()
+
+# 检测 MoveIt2 头文件扩展名（Humble: .h, Iron+: .hpp）
+if(moveit_ros_planning_interface_FOUND)
+    find_path(MOVEIT_HEADER_HPP_PATH
+        NAMES moveit/move_group_interface/move_group_interface.hpp
+    )
+    if(MOVEIT_HEADER_HPP_PATH)
+        target_compile_definitions(trajectory_generator PRIVATE MOVEIT_HEADER_HPP=1)
+        message(STATUS "EmbodiedRT: MoveIt2 header .hpp (Iron+)")
+    else()
+        message(STATUS "EmbodiedRT: MoveIt2 header .h (Humble)")
+    endif()
 endif()
 
 # --- Python 脚本 ---

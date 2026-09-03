@@ -7,11 +7,17 @@
 #include <algorithm>
 #include <cmath>
 
-struct PIDGains {
-    double kp, ki, kd;
+struct PIDParams {
+    double kp;
+    double ki;
+    double kd;
+    double kff;       ///< 速度前馈增益
+    double max_output;
+};
+
+struct PIDState {
     double integral{0.0};
     double prev_error{0.0};
-    double max_output;
 };
 
 class RealTimeController : public rclcpp::Node {
@@ -21,27 +27,32 @@ public:
         std::vector<double> default_kp = {50.0, 45.0, 40.0, 35.0, 30.0, 25.0, 20.0};
         std::vector<double> default_ki = {0.5, 0.4, 0.3, 0.2, 0.1, 0.1, 0.05};
         std::vector<double> default_kd = {2.0, 1.8, 1.5, 1.0, 0.8, 0.5, 0.3};
+        std::vector<double> default_kff = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         std::vector<double> default_max = {3.0, 2.5, 2.0, 1.5, 1.0, 0.8, 0.5};
 
         // 声明参数（可通过YAML覆盖）
         this->declare_parameter("kp", default_kp);
         this->declare_parameter("ki", default_ki);
         this->declare_parameter("kd", default_kd);
+        this->declare_parameter("kff", default_kff);
         this->declare_parameter("max_output", default_max);
 
         auto kp = this->get_parameter("kp").as_double_array();
         auto ki = this->get_parameter("ki").as_double_array();
         auto kd = this->get_parameter("kd").as_double_array();
+        auto kff = this->get_parameter("kff").as_double_array();
         auto max_out = this->get_parameter("max_output").as_double_array();
 
         size_t n = kp.size();
-        pid_.resize(n);
+        pid_params_.resize(n);
+        pid_state_.resize(n);
         current_state_.resize(n, 0.0);
         for (size_t i = 0; i < n; ++i) {
-            pid_[i].kp = kp[i];
-            pid_[i].ki = ki[i];
-            pid_[i].kd = kd[i];
-            pid_[i].max_output = max_out[i];
+            pid_params_[i].kp = kp[i];
+            pid_params_[i].ki = ki[i];
+            pid_params_[i].kd = kd[i];
+            pid_params_[i].kff = kff[i];
+            pid_params_[i].max_output = max_out[i];
         }
 
         traj_sub_ = create_subscription<trajectory_msgs::msg::JointTrajectory>(
@@ -87,7 +98,7 @@ private:
 
         if (!have_traj) return;
 
-        size_t n = std::min(target.positions.size(), pid_.size());
+        size_t n = std::min(target.positions.size(), pid_params_.size());
 
         sensor_msgs::msg::JointState cmd;
         cmd.header.stamp = now();
@@ -95,26 +106,35 @@ private:
                     "panda_joint4", "panda_joint5", "panda_joint6",
                     "panda_joint7"};
 
+        bool has_velocity = !target.velocities.empty();
+
         for (size_t i = 0; i < n; ++i) {
             double error = target.positions[i] - current_state_[i];
-            double deriv = (error - pid_[i].prev_error) * 1000.0;  // dt=1ms
-            pid_[i].integral += error * 0.001;
+            double deriv = (error - pid_state_[i].prev_error) * 1000.0;  // dt=1ms
+            pid_state_[i].integral += error * 0.001;
 
             // 积分抗饱和
-            if (pid_[i].ki > 0) {
-                pid_[i].integral = std::clamp(pid_[i].integral,
-                    -pid_[i].max_output / pid_[i].ki,
-                     pid_[i].max_output / pid_[i].ki);
+            if (pid_params_[i].ki > 0) {
+                pid_state_[i].integral = std::clamp(pid_state_[i].integral,
+                    -pid_params_[i].max_output / pid_params_[i].ki,
+                     pid_params_[i].max_output / pid_params_[i].ki);
             }
 
-            double output = pid_[i].kp * error
-                          + pid_[i].ki * pid_[i].integral
-                          + pid_[i].kd * deriv;
-            output = std::clamp(output, -pid_[i].max_output, pid_[i].max_output);
+            // 速度前馈
+            double ff = 0.0;
+            if (has_velocity && i < target.velocities.size()) {
+                ff = pid_params_[i].kff * target.velocities[i];
+            }
+
+            double output = pid_params_[i].kp * error
+                          + pid_params_[i].ki * pid_state_[i].integral
+                          + pid_params_[i].kd * deriv
+                          + ff;
+            output = std::clamp(output, -pid_params_[i].max_output, pid_params_[i].max_output);
 
             cmd.effort.push_back(output);
             cmd.position.push_back(target.positions[i]);
-            pid_[i].prev_error = error;
+            pid_state_[i].prev_error = error;
             current_state_[i] = target.positions[i];  // 直接跟踪目标位置
         }
 
@@ -132,7 +152,8 @@ private:
         }
     }
 
-    std::vector<PIDGains> pid_;
+    std::vector<PIDParams> pid_params_;
+    std::vector<PIDState> pid_state_;
     std::vector<double> current_state_;
     trajectory_msgs::msg::JointTrajectory latest_traj_;
     std::mutex traj_mtx_;

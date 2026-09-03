@@ -67,6 +67,13 @@ public:
         cmd_pub_ = create_publisher<sensor_msgs::msg::JointState>(
             "/control/joint_cmd", 10);
 
+        // 预分配JointState消息，避免1000Hz下重复分配字符串
+        cmd_msg_.name = {"panda_joint1", "panda_joint2", "panda_joint3",
+                         "panda_joint4", "panda_joint5", "panda_joint6",
+                         "panda_joint7"};
+        cmd_msg_.effort.reserve(n);
+        cmd_msg_.position.reserve(n);
+
         // 1000Hz控制定时器（1ms周期）
         control_timer_ = create_wall_timer(
             std::chrono::microseconds(1000),
@@ -100,11 +107,9 @@ private:
 
         size_t n = std::min(target.positions.size(), pid_params_.size());
 
-        sensor_msgs::msg::JointState cmd;
-        cmd.header.stamp = now();
-        cmd.name = {"panda_joint1", "panda_joint2", "panda_joint3",
-                    "panda_joint4", "panda_joint5", "panda_joint6",
-                    "panda_joint7"};
+        cmd_msg_.header.stamp = now();
+        cmd_msg_.effort.clear();
+        cmd_msg_.position.clear();
 
         bool has_velocity = !target.velocities.empty();
 
@@ -132,13 +137,13 @@ private:
                           + ff;
             output = std::clamp(output, -pid_params_[i].max_output, pid_params_[i].max_output);
 
-            cmd.effort.push_back(output);
-            cmd.position.push_back(target.positions[i]);
+            cmd_msg_.effort.push_back(output);
+            cmd_msg_.position.push_back(target.positions[i]);
             pid_state_[i].prev_error = error;
             current_state_[i] = target.positions[i];  // 直接跟踪目标位置
         }
 
-        cmd_pub_->publish(cmd);
+        cmd_pub_->publish(cmd_msg_);
 
         // 每1秒打印一次状态
         static int print_counter = 0;
@@ -162,6 +167,8 @@ private:
     rclcpp::Subscription<trajectory_msgs::msg::JointTrajectory>::SharedPtr traj_sub_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr cmd_pub_;
     rclcpp::TimerBase::SharedPtr control_timer_;
+
+    sensor_msgs::msg::JointState cmd_msg_;  ///< 预分配的关节指令消息
 };
 
 int main(int argc, char** argv) {

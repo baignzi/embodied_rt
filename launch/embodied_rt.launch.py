@@ -33,6 +33,7 @@ def generate_launch_description():
             package='embodied_rt',
             executable='trajectory_generator',
             name='trajectory_generator',
+            parameters=[config_file],
             output='screen',
         ),
 

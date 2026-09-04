@@ -63,6 +63,33 @@ TrajectoryGenerator::TrajectoryGenerator()
     : Node("trajectory_generator"),
       current_joints_{0.0, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785}  // Franka 就绪位
 {
+    // ---- 参数声明 ----
+    declare_parameter("fallback_scale", 0.3);
+    declare_parameter("fallback_duration", 2.0);
+    declare_parameter("fallback_blend_ratio", 0.2);
+    declare_parameter("traj_dt", 0.01);
+
+    fallback_scale_ = get_parameter("fallback_scale").as_double();
+    fallback_duration_ = get_parameter("fallback_duration").as_double();
+    fallback_blend_ratio_ = get_parameter("fallback_blend_ratio").as_double();
+    traj_dt_ = get_parameter("traj_dt").as_double();
+
+    // 合法性校验
+    if (fallback_blend_ratio_ < 0.0 || fallback_blend_ratio_ > 0.5) {
+        RCLCPP_WARN(get_logger(),
+            "fallback_blend_ratio %.3f out of range [0, 0.5], clamping",
+            fallback_blend_ratio_);
+        fallback_blend_ratio_ = std::clamp(fallback_blend_ratio_, 0.0, 0.5);
+    }
+    if (traj_dt_ <= 0.0) {
+        RCLCPP_WARN(get_logger(), "traj_dt must be positive, using 0.01");
+        traj_dt_ = 0.01;
+    }
+    if (fallback_duration_ <= 0.0) {
+        RCLCPP_WARN(get_logger(), "fallback_duration must be positive, using 2.0");
+        fallback_duration_ = 2.0;
+    }
+
     traj_pub_ = create_publisher<trajectory_msgs::msg::JointTrajectory>(
         "/planning/trajectory", 1);
 
@@ -133,7 +160,7 @@ bool TrajectoryGenerator::plan_with_moveit(
 
     auto traj_msg = plan.trajectory_.joint_trajectory;
 
-    resample(traj_msg, 0.01);  // 100Hz
+    resample(traj_msg, traj_dt_);
     out_traj = traj_msg;
 
     // 更新当前关节角为轨迹终点
@@ -156,7 +183,7 @@ void TrajectoryGenerator::plan_linear_fallback(
     // （真实系统用IK，这里standalone模式做简化演示）
     std::vector<double> target_joints = current_joints_;
     for (size_t i = 0; i < std::min(action.size(), target_joints.size()); ++i) {
-        target_joints[i] += action[i] * 0.3;  // 缩放因子，避免超界
+        target_joints[i] += action[i] * fallback_scale_;
     }
 
     out_traj.joint_names = {
@@ -164,13 +191,25 @@ void TrajectoryGenerator::plan_linear_fallback(
         "panda_joint4", "panda_joint5", "panda_joint6", "panda_joint7"
     };
 
-    double duration = 2.0;  // 2秒到达
-    double dt = 0.01;       // 100Hz
-    for (double t = 0.0; t <= duration + 1e-6; t += dt) {
-        double alpha = t / duration;
-        // 平滑加减速（梯形速度曲线近似）
-        if (alpha < 0.2)      alpha = alpha * alpha / (0.04) * 0.5;
-        else if (alpha > 0.8) alpha = 1.0 - (1.0 - alpha) * (1.0 - alpha) / (0.04) * 0.5;
+    double blend = fallback_blend_ratio_;
+    double one_minus_blend = 1.0 - blend;
+    // 梯形速度曲线：v_max = 1 / (1 - blend)，保证总位移为 1.0
+    double denom = blend * one_minus_blend;  // b * (1-b)
+
+    for (double t = 0.0; t <= fallback_duration_ + 1e-6; t += traj_dt_) {
+        double alpha = t / fallback_duration_;
+        // 平滑加减速（梯形速度曲线，位置与速度均连续）
+        if (alpha < blend) {
+            // 加速段：二次曲线
+            alpha = 0.5 * alpha * alpha / denom;
+        } else if (alpha > one_minus_blend) {
+            // 减速段：二次曲线
+            double u = 1.0 - alpha;
+            alpha = 1.0 - 0.5 * u * u / denom;
+        } else {
+            // 匀速段：线性
+            alpha = (alpha - 0.5 * blend) / one_minus_blend;
+        }
 
         trajectory_msgs::msg::JointTrajectoryPoint pt;
         pt.time_from_start = rclcpp::Duration::from_seconds(t);

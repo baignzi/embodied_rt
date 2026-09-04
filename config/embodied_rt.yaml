@@ -26,3 +26,11 @@ safety_monitor:
     joint_upper: [ 2.8973,  1.7628,  2.8973,  3.0718,  2.8973,  5.0265,  2.8973]
     max_velocity: 2.0                 # rad/s
     max_effort: 3.0                   # N·m
+
+# ===== 轨迹生成器 =====
+trajectory_generator:
+  ros__parameters:
+    fallback_scale: 0.3               # 动作增量缩放因子（避免超界）
+    fallback_duration: 2.0            # 线性降级轨迹持续时间（秒）
+    fallback_blend_ratio: 0.2         # 加减速段占比（0~0.5）
+    traj_dt: 0.01                     # 轨迹时间步长 / 重采样周期（秒）

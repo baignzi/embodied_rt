@@ -42,6 +42,12 @@ private:
     // 当前关节角（用于线性插值起点）
     std::vector<double> current_joints_;
 
+    // Linear fallback 参数
+    double fallback_scale_;          ///< 动作增量缩放因子
+    double fallback_duration_;       ///< 轨迹持续时间（秒）
+    double fallback_blend_ratio_;    ///< 加减速段占比（0~0.5）
+    double traj_dt_;                 ///< 轨迹时间步长（秒），即重采样频率
+
     rclcpp::Publisher<trajectory_msgs::msg::JointTrajectory>::SharedPtr traj_pub_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr action_sub_;
 };

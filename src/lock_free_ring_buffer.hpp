@@ -34,7 +34,7 @@ public:
         if (curr == head_.load(std::memory_order_acquire)) {
             return std::nullopt;  // buffer空，保持上一个动作
         }
-        T item = buffer_[curr];
+        const T item = buffer_[curr];
         tail_.store((curr + 1) & mask_, std::memory_order_release);
         return item;
     }

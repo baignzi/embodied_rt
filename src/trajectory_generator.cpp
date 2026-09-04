@@ -191,10 +191,10 @@ void TrajectoryGenerator::plan_linear_fallback(
         "panda_joint4", "panda_joint5", "panda_joint6", "panda_joint7"
     };
 
-    double blend = fallback_blend_ratio_;
-    double one_minus_blend = 1.0 - blend;
+    const double blend = fallback_blend_ratio_;
+    const double one_minus_blend = 1.0 - blend;
     // 梯形速度曲线：v_max = 1 / (1 - blend)，保证总位移为 1.0
-    double denom = blend * one_minus_blend;  // b * (1-b)
+    const double denom = blend * one_minus_blend;  // b * (1-b)
 
     for (double t = 0.0; t <= fallback_duration_ + 1e-6; t += traj_dt_) {
         double alpha = t / fallback_duration_;
@@ -230,14 +230,14 @@ void TrajectoryGenerator::resample(
 
     std::vector<trajectory_msgs::msg::JointTrajectoryPoint> new_pts;
     for (size_t i = 0; i < traj.points.size() - 1; ++i) {
-        auto& p0 = traj.points[i];
-        auto& p1 = traj.points[i + 1];
-        double t0 = rclcpp::Duration(p0.time_from_start).seconds();
-        double t1 = rclcpp::Duration(p1.time_from_start).seconds();
+        const auto& p0 = traj.points[i];
+        const auto& p1 = traj.points[i + 1];
+        const double t0 = rclcpp::Duration(p0.time_from_start).seconds();
+        const double t1 = rclcpp::Duration(p1.time_from_start).seconds();
         if (t1 <= t0) continue;
 
         for (double t = t0; t < t1 - 1e-9; t += dt) {
-            double alpha = (t - t0) / (t1 - t0);
+            const double alpha = (t - t0) / (t1 - t0);
             trajectory_msgs::msg::JointTrajectoryPoint pt;
             pt.time_from_start = rclcpp::Duration::from_seconds(t);
             for (size_t j = 0; j < p0.positions.size(); ++j) {

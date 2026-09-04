@@ -63,10 +63,10 @@ private:
         }
 
         bool estop = false;
-        size_t n = msg->position.size();
+        const size_t n = msg->position.size();
 
         // 确定当前时间戳：优先使用消息头，否则用节点当前时间
-        rclcpp::Time current_time =
+        const rclcpp::Time current_time =
             (msg->header.stamp.sec != 0 || msg->header.stamp.nanosec != 0)
                 ? rclcpp::Time(msg->header.stamp, RCL_ROS_TIME)
                 : this->now();
@@ -85,10 +85,10 @@ private:
         // 2. 速度检查（使用实际 dt）
         if (!first_check_ && !prev_positions_.empty() &&
             prev_positions_.size() == n) {
-            double dt = (current_time - last_time_).seconds();
+            const double dt = (current_time - last_time_).seconds();
             if (dt > 0.0 && dt < 1.0) {
                 for (size_t i = 0; i < n; ++i) {
-                    double vel =
+                    const double vel =
                         std::abs((msg->position[i] - prev_positions_[i]) / dt);
                     if (vel > max_velocity_) {
                         RCLCPP_ERROR(get_logger(),
@@ -123,9 +123,8 @@ private:
         }
 
         // 每2秒打印一次健康状态
-        static int counter = 0;
-        if (++counter >= 2000) {
-            counter = 0;
+        if (++health_counter_ >= 2000) {
+            health_counter_ = 0;
             RCLCPP_DEBUG(get_logger(), "Safety check OK: %zu joints monitored", n);
         }
     }
@@ -137,6 +136,7 @@ private:
     bool estop_triggered_{false};
     rclcpp::Time last_time_;
     bool first_check_{true};
+    int health_counter_{0};  ///< 健康状态打印计数器（避免static局部变量）
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr estop_pub_;
     rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr reset_srv_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;

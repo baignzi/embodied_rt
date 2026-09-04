@@ -105,7 +105,7 @@ private:
 
         if (!have_traj) return;
 
-        size_t n = std::min(target.positions.size(), pid_params_.size());
+        const size_t n = std::min(target.positions.size(), pid_params_.size());
 
         cmd_msg_.header.stamp = now();
         if (cmd_msg_.effort.size() != n) {
@@ -113,11 +113,11 @@ private:
             cmd_msg_.position.resize(n);
         }
 
-        bool has_velocity = !target.velocities.empty();
+        const bool has_velocity = !target.velocities.empty();
 
         for (size_t i = 0; i < n; ++i) {
-            double error = target.positions[i] - current_state_[i];
-            double deriv = (error - pid_state_[i].prev_error) * 1000.0;  // dt=1ms
+            const double error = target.positions[i] - current_state_[i];
+            const double deriv = (error - pid_state_[i].prev_error) * 1000.0;  // dt=1ms
             pid_state_[i].integral += error * 0.001;
 
             // 积分抗饱和
@@ -128,16 +128,16 @@ private:
             }
 
             // 速度前馈
-            double ff = 0.0;
-            if (has_velocity && i < target.velocities.size()) {
-                ff = pid_params_[i].kff * target.velocities[i];
-            }
+            const double ff = (has_velocity && i < target.velocities.size())
+                                  ? pid_params_[i].kff * target.velocities[i]
+                                  : 0.0;
 
-            double output = pid_params_[i].kp * error
-                          + pid_params_[i].ki * pid_state_[i].integral
-                          + pid_params_[i].kd * deriv
-                          + ff;
-            output = std::clamp(output, -pid_params_[i].max_output, pid_params_[i].max_output);
+            const double output = std::clamp(
+                pid_params_[i].kp * error
+              + pid_params_[i].ki * pid_state_[i].integral
+              + pid_params_[i].kd * deriv
+              + ff,
+                -pid_params_[i].max_output, pid_params_[i].max_output);
 
             cmd_msg_.effort[i] = output;
             cmd_msg_.position[i] = target.positions[i];
@@ -148,9 +148,8 @@ private:
         cmd_pub_->publish(cmd_msg_);
 
         // 每1秒打印一次状态
-        static int print_counter = 0;
-        if (++print_counter >= 1000) {
-            print_counter = 0;
+        if (++print_counter_ >= 1000) {
+            print_counter_ = 0;
             if (traj_received_) {
                 RCLCPP_INFO(this->get_logger(),
                     "Control active: %zu joints, tracking trajectory", n);
@@ -171,6 +170,7 @@ private:
     rclcpp::TimerBase::SharedPtr control_timer_;
 
     sensor_msgs::msg::JointState cmd_msg_;  ///< 预分配的关节指令消息
+    int print_counter_{0};                  ///< 状态打印计数器（避免static局部变量）
 };
 
 int main(int argc, char** argv) {

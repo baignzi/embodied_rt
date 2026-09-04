@@ -71,8 +71,8 @@ public:
         cmd_msg_.name = {"panda_joint1", "panda_joint2", "panda_joint3",
                          "panda_joint4", "panda_joint5", "panda_joint6",
                          "panda_joint7"};
-        cmd_msg_.effort.reserve(n);
-        cmd_msg_.position.reserve(n);
+        cmd_msg_.effort.resize(n);
+        cmd_msg_.position.resize(n);
 
         // 1000Hz控制定时器（1ms周期）
         control_timer_ = create_wall_timer(
@@ -108,8 +108,10 @@ private:
         size_t n = std::min(target.positions.size(), pid_params_.size());
 
         cmd_msg_.header.stamp = now();
-        cmd_msg_.effort.clear();
-        cmd_msg_.position.clear();
+        if (cmd_msg_.effort.size() != n) {
+            cmd_msg_.effort.resize(n);
+            cmd_msg_.position.resize(n);
+        }
 
         bool has_velocity = !target.velocities.empty();
 
@@ -137,8 +139,8 @@ private:
                           + ff;
             output = std::clamp(output, -pid_params_[i].max_output, pid_params_[i].max_output);
 
-            cmd_msg_.effort.push_back(output);
-            cmd_msg_.position.push_back(target.positions[i]);
+            cmd_msg_.effort[i] = output;
+            cmd_msg_.position[i] = target.positions[i];
             pid_state_[i].prev_error = error;
             current_state_[i] = target.positions[i];  // 直接跟踪目标位置
         }

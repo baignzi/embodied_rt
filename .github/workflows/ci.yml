@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  build-and-test:
+  build:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
@@ -25,19 +25,10 @@ jobs:
           source /opt/ros/humble/setup.bash
           sudo rosdep init || true
           rosdep update
-          rosdep install --from-paths src --ignore-src -r -y \
-            --skip-keys="moveit_ros_planning_interface tf2 tf2_geometry_msgs robot_state_publisher moveit_resources_panda_description python3-torch python3-transformers python3-pil"
+          rosdep install --from-paths src --ignore-src -r -y
 
       - name: Build
         run: |
           source /opt/ros/humble/setup.bash
           colcon build --packages-select embodied_rt --cmake-args -DBUILD_TESTING=OFF
-        working-directory: ${{ github.workspace }}
-
-      - name: Test
-        if: false
-        run: |
-          source /opt/ros/humble/setup.bash
-          colcon test --packages-select embodied_rt
-          colcon test-result --verbose
         working-directory: ${{ github.workspace }}

@@ -22,8 +22,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ros-humble-ament-cmake-gtest
+          source /opt/ros/humble/setup.bash
+          sudo rosdep init || true
+          rosdep update
+          rosdep install --from-paths src --ignore-src -r -y \
+            --skip-keys="moveit_ros_planning_interface tf2 tf2_geometry_msgs robot_state_publisher moveit_resources_panda_description python3-torch python3-transformers python3-pil"
 
       - name: Build
         run: |

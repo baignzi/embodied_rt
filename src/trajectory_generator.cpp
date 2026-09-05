@@ -276,6 +276,7 @@ void TrajectoryGenerator::on_action(const std_msgs::msg::String::SharedPtr msg) 
 }
 
 // ===== 入口 =====
+#ifndef UNIT_TEST
 int main(int argc, char** argv) {
     rclcpp::init(argc, argv);
     auto node = std::make_shared<TrajectoryGenerator>();
@@ -284,3 +285,4 @@ int main(int argc, char** argv) {
     rclcpp::shutdown();
     return 0;
 }
+#endif

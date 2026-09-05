@@ -119,4 +119,27 @@ install(DIRECTORY launch
     DESTINATION share/${PROJECT_NAME}
 )
 
+# --- 单元测试 ---
+if(BUILD_TESTING)
+    find_package(ament_cmake_gtest REQUIRED)
+
+    # PID 控制器测试（header-only, 无需链接额外源文件）
+    ament_add_gtest(test_pid test/test_pid.cpp)
+    target_include_directories(test_pid PRIVATE src)
+
+    # 轨迹生成器测试（编译 trajectory_generator.cpp，排除 main）
+    ament_add_gtest(test_trajectory
+        test/test_trajectory.cpp
+        src/trajectory_generator.cpp
+    )
+    target_include_directories(test_trajectory PRIVATE src)
+    target_link_libraries(test_trajectory
+        rclcpp::rclcpp
+        trajectory_msgs::trajectory_msgs__rosidl_typesupport_cpp
+        std_msgs::std_msgs__rosidl_typesupport_cpp
+        geometry_msgs::geometry_msgs__rosidl_typesupport_cpp
+    )
+    target_compile_definitions(test_trajectory PRIVATE UNIT_TEST HAS_MOVEIT=0)
+endif()
+
 ament_package()

@@ -6,19 +6,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
-
-struct PIDParams {
-    double kp;
-    double ki;
-    double kd;
-    double kff;       ///< 速度前馈增益
-    double max_output;
-};
-
-struct PIDState {
-    double integral{0.0};
-    double prev_error{0.0};
-};
+#include "pid_controller.hpp"
 
 class RealTimeController : public rclcpp::Node {
 public:
@@ -116,32 +104,13 @@ private:
         const bool has_velocity = !target.velocities.empty();
 
         for (size_t i = 0; i < n; ++i) {
-            const double error = target.positions[i] - current_state_[i];
-            const double deriv = (error - pid_state_[i].prev_error) * 1000.0;  // dt=1ms
-            pid_state_[i].integral += error * 0.001;
-
-            // 积分抗饱和
-            if (pid_params_[i].ki > 0) {
-                pid_state_[i].integral = std::clamp(pid_state_[i].integral,
-                    -pid_params_[i].max_output / pid_params_[i].ki,
-                     pid_params_[i].max_output / pid_params_[i].ki);
-            }
-
-            // 速度前馈
-            const double ff = (has_velocity && i < target.velocities.size())
-                                  ? pid_params_[i].kff * target.velocities[i]
-                                  : 0.0;
-
-            const double output = std::clamp(
-                pid_params_[i].kp * error
-              + pid_params_[i].ki * pid_state_[i].integral
-              + pid_params_[i].kd * deriv
-              + ff,
-                -pid_params_[i].max_output, pid_params_[i].max_output);
-
-            cmd_msg_.effort[i] = output;
+            const bool has_vel = (has_velocity && i < target.velocities.size());
+            const double vel = has_vel ? target.velocities[i] : 0.0;
+            cmd_msg_.effort[i] = compute_pid_output(
+                pid_params_[i], pid_state_[i],
+                target.positions[i], current_state_[i], 0.001,
+                has_vel, vel);
             cmd_msg_.position[i] = target.positions[i];
-            pid_state_[i].prev_error = error;
             current_state_[i] = target.positions[i];  // 直接跟踪目标位置
         }
 

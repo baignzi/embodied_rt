@@ -18,11 +18,14 @@ public:
     /// 构造完成后调用（shared_from_this 此时安全）
     void init();
 
-private:
-    void on_action(const std_msgs::msg::String::SharedPtr msg);
-
     /// 从JSON字符串解析7维动作
     static std::vector<double> parse_action(const std::string& json_str);
+
+    /// 重采样到固定dt
+    static void resample(trajectory_msgs::msg::JointTrajectory& traj, double dt);
+
+private:
+    void on_action(const std_msgs::msg::String::SharedPtr msg);
 
     /// MoveIt2 RRT*规划（有MoveIt时调用）
     bool plan_with_moveit(const std::vector<double>& action,
@@ -31,9 +34,6 @@ private:
     /// 关节空间线性插值（standalone降级模式）
     void plan_linear_fallback(const std::vector<double>& action,
                               trajectory_msgs::msg::JointTrajectory& out_traj);
-
-    /// 重采样到固定dt
-    static void resample(trajectory_msgs::msg::JointTrajectory& traj, double dt);
 
     // MoveIt2接口（可选，编译期决定）
     struct MoveItImpl;

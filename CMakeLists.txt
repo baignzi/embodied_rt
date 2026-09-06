@@ -19,6 +19,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(trajectory_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 
 # --- 实时控制器 ---
 add_executable(real_time_controller src/real_time_controller.cpp)
@@ -35,6 +36,7 @@ target_link_libraries(safety_monitor
     rclcpp::rclcpp
     sensor_msgs::sensor_msgs__rosidl_typesupport_cpp
     std_msgs::std_msgs__rosidl_typesupport_cpp
+    std_srvs::std_srvs__rosidl_typesupport_cpp
 )
 target_include_directories(safety_monitor PRIVATE src)
 

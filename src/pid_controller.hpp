@@ -19,6 +19,7 @@ struct PIDParams {
     double kd{0.0};        ///< 微分增益
     double kff{0.0};       ///< 速度前馈增益
     double max_output{1.0}; ///< 输出限幅
+    double deriv_filter_alpha{1.0}; ///< 微分项低通滤波系数 [0,1]，1.0=不滤波
 };
 
 /**
@@ -28,6 +29,7 @@ struct PIDParams {
 struct PIDState {
     double integral{0.0};  ///< 积分累积项
     double prev_error{0.0}; ///< 上一时刻的误差值
+    double prev_filtered_deriv{0.0}; ///< 上一时刻滤波后的微分值
 };
 
 /**
@@ -35,12 +37,13 @@ struct PIDState {
  *
  * 计算流程：
  * 1. 误差 = 设定值 - 当前值
- * 2. 微分项 = (误差 - 上次误差) / dt
- * 3. 积分项累积并做抗饱和限幅
- * 4. 可选速度前馈：kff * velocity
- * 5. 输出限幅到 [-max_output, max_output]
+ * 2. 原始微分 = (误差 - 上次误差) / dt
+ * 3. 微分低通滤波：filtered = alpha * raw + (1-alpha) * prev_filtered
+ * 4. 积分项累积并做抗饱和限幅
+ * 5. 可选速度前馈：kff * velocity
+ * 6. 输出限幅到 [-max_output, max_output]
  *
- * @param params        PID 参数（kp/ki/kd/kff/max_output）
+ * @param params        PID 参数（kp/ki/kd/kff/max_output/deriv_filter_alpha）
  * @param state         PID 状态（会被原地更新）
  * @param setpoint      目标值
  * @param current       当前测量值
@@ -54,7 +57,9 @@ inline double compute_pid_output(const PIDParams& params, PIDState& state,
                                  bool has_velocity = false,
                                  double velocity = 0.0) {
     const double error = setpoint - current;
-    const double deriv = (error - state.prev_error) / dt;
+    const double raw_deriv = (error - state.prev_error) / dt;
+    const double filtered_deriv = params.deriv_filter_alpha * raw_deriv
+        + (1.0 - params.deriv_filter_alpha) * state.prev_filtered_deriv;
     state.integral += error * dt;
 
     if (params.ki > 0) {
@@ -67,9 +72,10 @@ inline double compute_pid_output(const PIDParams& params, PIDState& state,
     const double output = std::clamp(
         params.kp * error
         + params.ki * state.integral
-        + params.kd * deriv
+        + params.kd * filtered_deriv
         + ff,
         -params.max_output, params.max_output);
     state.prev_error = error;
+    state.prev_filtered_deriv = filtered_deriv;
     return output;
 }

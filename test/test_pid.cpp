@@ -123,4 +123,34 @@ TEST(PIDTest, StateUpdates) {
     compute_pid_output(params, state, 5.0, 0.0, 0.01);
     EXPECT_NEAR(state.prev_error, 5.0, 1e-6);
     EXPECT_NEAR(state.integral, 0.05, 1e-6);
+    // 滤波后的微分值也应被更新
+    // raw_deriv = (5.0 - 0.0) / 0.01 = 500; alpha=1.0 so filtered=500
+    EXPECT_NEAR(state.prev_filtered_deriv, 500.0, 1e-3);
+}
+
+// === PID 微分低通滤波测试 ===
+TEST(PIDTest, DerivativeFilterAttenuation) {
+    // alpha=0.5: 半衰滤波
+    PIDParams params{0.0, 0.0, 1.0, 0.0, 100.0, 0.5};
+    PIDState state;
+    // 第一步: error=1.0, raw_deriv=(1.0-0)/0.001=1000
+    // filtered = 0.5*1000 + 0.5*0 = 500
+    double output1 = compute_pid_output(params, state, 1.0, 0.0, 0.001);
+    EXPECT_NEAR(output1, 500.0, 1e-3);
+    // 第二步: error=1.0, raw_deriv=0
+    // filtered = 0.5*0 + 0.5*500 = 250
+    double output2 = compute_pid_output(params, state, 1.0, 0.0, 0.001);
+    EXPECT_NEAR(output2, 250.0, 1e-3);
+}
+
+TEST(PIDTest, DerivativeFilterNoFilterWhenAlphaOne) {
+    // alpha=1.0: 不滤波，行为与无滤波一致
+    PIDParams params{0.0, 0.0, 2.0, 0.0, 100.0, 1.0};
+    PIDState state;
+    // 第一步: error=0.5, deriv = (0.5-0)/0.001 = 500
+    double output1 = compute_pid_output(params, state, 0.5, 0.0, 0.001);
+    EXPECT_NEAR(output1, 2.0 * 500.0, 1e-3);
+    // 第二步: 相同误差, deriv = 0
+    double output2 = compute_pid_output(params, state, 0.5, 0.0, 0.001);
+    EXPECT_NEAR(output2, 0.0, 1e-6);
 }

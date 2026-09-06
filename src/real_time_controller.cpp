@@ -17,6 +17,8 @@ public:
         std::vector<double> default_kd = {2.0, 1.8, 1.5, 1.0, 0.8, 0.5, 0.3};
         std::vector<double> default_kff = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         std::vector<double> default_max = {3.0, 2.5, 2.0, 1.5, 1.0, 0.8, 0.5};
+        // 微分低通滤波系数：0.1 ≈ 18Hz截止频率 @ 1000Hz，抑制测量噪声
+        std::vector<double> default_deriv_alpha = {0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
 
         // 声明参数（可通过YAML覆盖）
         this->declare_parameter("kp", default_kp);
@@ -24,12 +26,14 @@ public:
         this->declare_parameter("kd", default_kd);
         this->declare_parameter("kff", default_kff);
         this->declare_parameter("max_output", default_max);
+        this->declare_parameter("deriv_filter_alpha", default_deriv_alpha);
 
         auto kp = this->get_parameter("kp").as_double_array();
         auto ki = this->get_parameter("ki").as_double_array();
         auto kd = this->get_parameter("kd").as_double_array();
         auto kff = this->get_parameter("kff").as_double_array();
         auto max_out = this->get_parameter("max_output").as_double_array();
+        auto dfa = this->get_parameter("deriv_filter_alpha").as_double_array();
 
         size_t n = kp.size();
         pid_params_.resize(n);
@@ -41,6 +45,7 @@ public:
             pid_params_[i].kd = kd[i];
             pid_params_[i].kff = kff[i];
             pid_params_[i].max_output = max_out[i];
+            pid_params_[i].deriv_filter_alpha = dfa[i];
         }
 
         traj_sub_ = create_subscription<trajectory_msgs::msg::JointTrajectory>(

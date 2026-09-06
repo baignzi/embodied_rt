@@ -1,0 +1,40 @@
+# Doxyfile — EmbodiedRT Doxygen 配置
+
+PROJECT_NAME           = "EmbodiedRT"
+PROJECT_NUMBER         = 0.1.0
+PROJECT_BRIEF          = "Embodied Real-Time Robot Control Framework"
+
+# 输入源
+INPUT                  = src test
+RECURSIVE              = YES
+FILE_PATTERNS          = *.hpp *.cpp *.h *.cc
+
+# 输出
+OUTPUT_DIRECTORY       = docs
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+GENERATE_XML           = YES
+
+# 语言与编码
+INPUT_ENCODING         = UTF-8
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_STATIC         = YES
+
+# 前端样式
+HTML_OUTPUT            = html
+USE_MATHJAX            = YES
+
+# 源码浏览
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = YES
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+
+# 警告
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR     = YES
+
+# 查找范围
+ENABLE_PREPROCESSING   = YES
+SEARCHENGINE           = YES

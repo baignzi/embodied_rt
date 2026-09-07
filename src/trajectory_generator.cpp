@@ -98,6 +98,41 @@ TrajectoryGenerator::TrajectoryGenerator()
         [this](const std_msgs::msg::String::SharedPtr msg) {
             this->on_action(msg);
         });
+
+    // 动态参数服务：原子性更新参数（全部成功或全部回滚）
+    param_srv_ = create_service<rcl_interfaces::srv::SetParametersAtomically>(
+        "~/set_parameters_atomically",
+        [this](
+            const std::shared_ptr<rcl_interfaces::srv::SetParametersAtomically::Request> request,
+            std::shared_ptr<rcl_interfaces::srv::SetParametersAtomically::Response> response)
+        {
+            rcl_interfaces::msg::SetParametersResult result;
+            result.successful = true;
+            result.reason = "ok";
+
+            // 先全部校验，再批量应用（原子性）
+            for (const auto& p : request->parameters) {
+                rclcpp::Parameter param(p);
+                std::string reason;
+                if (!apply_param(param, reason, true)) {  // dry-run: 只校验不应用
+                    result.successful = false;
+                    result.reason = reason;
+                    response->result = result;
+                    return;
+                }
+            }
+
+            // 校验通过，真正应用
+            for (const auto& p : request->parameters) {
+                rclcpp::Parameter param(p);
+                std::string reason;
+                apply_param(param, reason, false);  // 实际应用
+            }
+
+            RCLCPP_INFO(get_logger(),
+                "Parameters updated atomically: %zu params", request->parameters.size());
+            response->result = result;
+        });
 }
 
 // ===== init：构造完成后初始化 MoveIt =====
@@ -249,6 +284,81 @@ void TrajectoryGenerator::resample(
     }
     new_pts.push_back(traj.points.back());
     traj.points = std::move(new_pts);
+}
+
+// ===== 动态参数：校验与应用 =====
+bool TrajectoryGenerator::apply_param(
+        const rclcpp::Parameter& param,
+        std::string& reason,
+        bool dry_run) {
+    const std::string& name = param.get_name();
+
+    if (name == "fallback_scale") {
+        if (param.get_type() != rclcpp::ParameterType::PARAMETER_DOUBLE) {
+            reason = "fallback_scale must be double";
+            return false;
+        }
+        double val = param.as_double();
+        if (val <= 0.0) {
+            reason = "fallback_scale must be positive";
+            return false;
+        }
+        if (!dry_run) {
+            fallback_scale_ = val;
+        }
+        return true;
+    }
+
+    if (name == "fallback_duration") {
+        if (param.get_type() != rclcpp::ParameterType::PARAMETER_DOUBLE) {
+            reason = "fallback_duration must be double";
+            return false;
+        }
+        double val = param.as_double();
+        if (val <= 0.0) {
+            reason = "fallback_duration must be positive";
+            return false;
+        }
+        if (!dry_run) {
+            fallback_duration_ = val;
+        }
+        return true;
+    }
+
+    if (name == "fallback_blend_ratio") {
+        if (param.get_type() != rclcpp::ParameterType::PARAMETER_DOUBLE) {
+            reason = "fallback_blend_ratio must be double";
+            return false;
+        }
+        double val = param.as_double();
+        if (val < 0.0 || val > 0.5) {
+            reason = "fallback_blend_ratio must be in [0, 0.5]";
+            return false;
+        }
+        if (!dry_run) {
+            fallback_blend_ratio_ = val;
+        }
+        return true;
+    }
+
+    if (name == "traj_dt") {
+        if (param.get_type() != rclcpp::ParameterType::PARAMETER_DOUBLE) {
+            reason = "traj_dt must be double";
+            return false;
+        }
+        double val = param.as_double();
+        if (val <= 0.0) {
+            reason = "traj_dt must be positive";
+            return false;
+        }
+        if (!dry_run) {
+            traj_dt_ = val;
+        }
+        return true;
+    }
+
+    reason = "unknown parameter: " + name;
+    return false;
 }
 
 // ===== 动作回调 =====

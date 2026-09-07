@@ -20,6 +20,7 @@ find_package(trajectory_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
+find_package(rcl_interfaces REQUIRED)
 
 # --- 实时控制器 ---
 add_executable(real_time_controller src/real_time_controller.cpp)
@@ -54,6 +55,7 @@ target_link_libraries(trajectory_generator
     trajectory_msgs::trajectory_msgs__rosidl_typesupport_cpp
     std_msgs::std_msgs__rosidl_typesupport_cpp
     geometry_msgs::geometry_msgs__rosidl_typesupport_cpp
+    rcl_interfaces::rcl_interfaces__rosidl_typesupport_cpp
 )
 
 # 尝试链接 MoveIt2（三种方式兼容不同版本）
@@ -140,6 +142,7 @@ if(BUILD_TESTING)
         trajectory_msgs::trajectory_msgs__rosidl_typesupport_cpp
         std_msgs::std_msgs__rosidl_typesupport_cpp
         geometry_msgs::geometry_msgs__rosidl_typesupport_cpp
+        rcl_interfaces::rcl_interfaces__rosidl_typesupport_cpp
     )
     target_compile_definitions(test_trajectory PRIVATE UNIT_TEST HAS_MOVEIT=0)
 endif()

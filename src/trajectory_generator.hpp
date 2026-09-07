@@ -11,6 +11,7 @@
 #include <trajectory_msgs/msg/joint_trajectory.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <geometry_msgs/msg/pose.hpp>
+#include <rcl_interfaces/srv/set_parameters_atomically.hpp>
 #include <vector>
 #include <string>
 
@@ -53,6 +54,15 @@ public:
      */
     static void resample(trajectory_msgs::msg::JointTrajectory& traj, double dt);
 
+    /**
+     * @brief 校验并应用单个参数更新
+     * @param param   待更新的参数
+     * @param reason  输出：失败原因（成功时为空）
+     * @param dry_run 仅校验不实际修改（用于原子性预检）
+     * @return 更新是否成功
+     */
+    bool apply_param(const rclcpp::Parameter& param, std::string& reason, bool dry_run = false);
+
 private:
     /**
      * @brief 动作消息回调，解析并规划轨迹后发布
@@ -91,4 +101,6 @@ private:
 
     rclcpp::Publisher<trajectory_msgs::msg::JointTrajectory>::SharedPtr traj_pub_;   ///< 轨迹发布者
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr action_sub_;              ///< 动作订阅者
+
+    rclcpp::Service<rcl_interfaces::srv::SetParametersAtomically>::SharedPtr param_srv_;  ///< 动态参数服务
 };

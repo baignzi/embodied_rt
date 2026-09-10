@@ -74,12 +74,13 @@ TrajectoryGenerator::TrajectoryGenerator()
     fallback_blend_ratio_ = get_parameter("fallback_blend_ratio").as_double();
     traj_dt_ = get_parameter("traj_dt").as_double();
 
-    // 合法性校验
-    if (fallback_blend_ratio_ < 0.0 || fallback_blend_ratio_ > 0.5) {
+    // 合法性校验（下界 >0 防止 denom=blend*(1-blend)=0 导致除以零）
+    constexpr double kMinBlendRatio = 1e-6;
+    if (fallback_blend_ratio_ < kMinBlendRatio || fallback_blend_ratio_ > 0.5) {
         RCLCPP_WARN(get_logger(),
-            "fallback_blend_ratio %.3f out of range [0, 0.5], clamping",
+            "fallback_blend_ratio %.3f out of range [1e-6, 0.5], clamping",
             fallback_blend_ratio_);
-        fallback_blend_ratio_ = std::clamp(fallback_blend_ratio_, 0.0, 0.5);
+        fallback_blend_ratio_ = std::clamp(fallback_blend_ratio_, kMinBlendRatio, 0.5);
     }
     if (traj_dt_ <= 0.0) {
         RCLCPP_WARN(get_logger(), "traj_dt must be positive, using 0.01");
@@ -330,9 +331,10 @@ bool TrajectoryGenerator::apply_param(
             reason = "fallback_blend_ratio must be double";
             return false;
         }
+        constexpr double kMinBlendRatio = 1e-6;
         double val = param.as_double();
-        if (val < 0.0 || val > 0.5) {
-            reason = "fallback_blend_ratio must be in [0, 0.5]";
+        if (val < kMinBlendRatio || val > 0.5) {
+            reason = "fallback_blend_ratio must be in [1e-6, 0.5]";
             return false;
         }
         if (!dry_run) {

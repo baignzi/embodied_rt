@@ -2,6 +2,8 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <trajectory_msgs/msg/joint_trajectory.hpp>
+#include <std_msgs/msg/bool.hpp>
+#include <atomic>
 #include <mutex>
 #include <vector>
 #include <algorithm>
@@ -57,6 +59,18 @@ public:
                 traj_received_ = true;
             });
 
+        estop_sub_ = create_subscription<std_msgs::msg::Bool>(
+            "/safety/estop", 1,
+            [this](std_msgs::msg::Bool::SharedPtr msg) {
+                if (msg->data) {
+                    estop_triggered_ = true;
+                    RCLCPP_WARN(get_logger(), "E-stop received, halting trajectory output");
+                } else {
+                    estop_triggered_ = false;
+                    RCLCPP_INFO(get_logger(), "E-stop cleared, resuming trajectory output");
+                }
+            });
+
         cmd_pub_ = create_publisher<sensor_msgs::msg::JointState>(
             "/control/joint_cmd", 10);
 
@@ -78,6 +92,8 @@ public:
 
 private:
     void control_step() {
+        if (estop_triggered_) return;
+
         trajectory_msgs::msg::JointTrajectoryPoint target;
         bool have_traj = false;
 
@@ -140,11 +156,13 @@ private:
     size_t traj_idx_{0};
     bool traj_received_{false};
     rclcpp::Subscription<trajectory_msgs::msg::JointTrajectory>::SharedPtr traj_sub_;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr estop_sub_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr cmd_pub_;
     rclcpp::TimerBase::SharedPtr control_timer_;
 
     sensor_msgs::msg::JointState cmd_msg_;  ///< 预分配的关节指令消息
     int print_counter_{0};                  ///< 状态打印计数器（避免static局部变量）
+    std::atomic<bool> estop_triggered_{false}; ///< 急停触发标志
 };
 
 int main(int argc, char** argv) {

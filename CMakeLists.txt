@@ -28,6 +28,7 @@ target_link_libraries(real_time_controller
     rclcpp::rclcpp
     sensor_msgs::sensor_msgs__rosidl_typesupport_cpp
     trajectory_msgs::trajectory_msgs__rosidl_typesupport_cpp
+    std_msgs::std_msgs__rosidl_typesupport_cpp
 )
 target_include_directories(real_time_controller PRIVATE src)
 

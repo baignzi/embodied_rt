@@ -81,6 +81,9 @@ public:
         cmd_msg_.effort.resize(n);
         cmd_msg_.position.resize(n);
 
+        // 动态计算 dt 用的时间戳初始化
+        prev_time_ = now();
+
         // 1000Hz控制定时器（1ms周期）
         control_timer_ = create_wall_timer(
             std::chrono::microseconds(1000),
@@ -93,6 +96,18 @@ public:
 private:
     void control_step() {
         if (estop_triggered_) return;
+
+        // 动态计算实际 dt（秒），首次使用默认 1ms
+        const rclcpp::Time t_now = now();
+        double dt = 0.001;
+        if (!first_step_) {
+            dt = (t_now - prev_time_).seconds();
+            if (dt <= 0.0 || dt > 0.01) {
+                dt = 0.001;  // 异常时回退到默认 1ms
+            }
+        }
+        prev_time_ = t_now;
+        first_step_ = false;
 
         trajectory_msgs::msg::JointTrajectoryPoint target;
         bool have_traj = false;
@@ -129,7 +144,7 @@ private:
             const double vel = has_vel ? target.velocities[i] : 0.0;
             cmd_msg_.effort[i] = compute_pid_output(
                 pid_params_[i], pid_state_[i],
-                target.positions[i], current_state_[i], 0.001,
+                target.positions[i], current_state_[i], dt,
                 has_vel, vel);
             cmd_msg_.position[i] = target.positions[i];
             current_state_[i] = target.positions[i];  // 直接跟踪目标位置
@@ -163,6 +178,8 @@ private:
     sensor_msgs::msg::JointState cmd_msg_;  ///< 预分配的关节指令消息
     int print_counter_{0};                  ///< 状态打印计数器（避免static局部变量）
     std::atomic<bool> estop_triggered_{false}; ///< 急停触发标志
+    rclcpp::Time prev_time_;                ///< 上次控制步时间戳，用于动态计算 dt
+    bool first_step_{true};                 ///< 是否为首次控制步
 };
 
 int main(int argc, char** argv) {

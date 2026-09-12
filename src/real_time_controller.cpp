@@ -71,6 +71,29 @@ public:
                 }
             });
 
+        joint_state_sub_ = create_subscription<sensor_msgs::msg::JointState>(
+            "/joint_states", 1,
+            [this](sensor_msgs::msg::JointState::SharedPtr msg) {
+                std::lock_guard<std::mutex> lk(state_mtx_);
+                if (msg->position.empty()) return;
+                if (!msg->name.empty() && msg->name.size() == msg->position.size()) {
+                    for (size_t i = 0; i < msg->name.size(); ++i) {
+                        for (size_t j = 0; j < cmd_msg_.name.size(); ++j) {
+                            if (msg->name[i] == cmd_msg_.name[j] && j < current_state_.size()) {
+                                current_state_[j] = msg->position[i];
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    const size_t n = std::min(msg->position.size(), current_state_.size());
+                    for (size_t i = 0; i < n; ++i) {
+                        current_state_[i] = msg->position[i];
+                    }
+                }
+                joint_states_received_ = true;
+            });
+
         cmd_pub_ = create_publisher<sensor_msgs::msg::JointState>(
             "/control/joint_cmd", 10);
 
@@ -142,12 +165,16 @@ private:
         for (size_t i = 0; i < n; ++i) {
             const bool has_vel = (has_velocity && i < target.velocities.size());
             const double vel = has_vel ? target.velocities[i] : 0.0;
+            double current;
+            {
+                std::lock_guard<std::mutex> lk(state_mtx_);
+                current = joint_states_received_ ? current_state_[i] : target.positions[i];
+            }
             cmd_msg_.effort[i] = compute_pid_output(
                 pid_params_[i], pid_state_[i],
-                target.positions[i], current_state_[i], dt,
+                target.positions[i], current, dt,
                 has_vel, vel);
             cmd_msg_.position[i] = target.positions[i];
-            current_state_[i] = target.positions[i];  // 直接跟踪目标位置
         }
 
         cmd_pub_->publish(cmd_msg_);
@@ -168,10 +195,13 @@ private:
     std::vector<double> current_state_;
     trajectory_msgs::msg::JointTrajectory latest_traj_;
     std::mutex traj_mtx_;
+    std::mutex state_mtx_;                  ///< 保护 current_state_ 的互斥锁
     size_t traj_idx_{0};
     bool traj_received_{false};
+    bool joint_states_received_{false};     ///< 是否收到过 /joint_states 反馈
     rclcpp::Subscription<trajectory_msgs::msg::JointTrajectory>::SharedPtr traj_sub_;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr estop_sub_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr cmd_pub_;
     rclcpp::TimerBase::SharedPtr control_timer_;
 

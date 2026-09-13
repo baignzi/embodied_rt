@@ -10,7 +10,7 @@
 | 2  | P0  | real_time_controller   | 订阅 /safety/estop，收到急停后立即停止输出轨迹指令（当前控制器完全不知道急停）                              | ✅    |
 | 3  | P1  | real_time_controller   | dt 动态计算：从定时器或消息时间戳计算实际 dt，替代硬编码 0.001                                                | ✅    |
 | 4  | P1  | real_time_controller   | current_state_ 不应直接赋值为 target，应从 /joint_states 反馈读取（否则 PID 积分/微分项失效）                       | ✅    |
-| 5  | P1  | config/yaml            | 补全 kff 和 deriv_filter_alpha 参数到 YAML；移除未使用的 frequency 参数                                          | ❌    |
+| 5  | P1  | config/yaml            | 补全 kff 和 deriv_filter_alpha 参数到 YAML；移除未使用的 frequency 参数                                          | ✅    |
 | 6  | P1  | trajectory_generator   | on_action 回调加锁保护 current_joins_，防止数据竞争                                                        | ❌    |
 | 7  | P1  | benchmark_node.py      | 输出路径用 os.path.join(tempfile.gettempdir(), ...) 替代硬编码 /tmp/；vla_receive_times 字典加 maxlen 防内存泄漏        | ❌    |
 | 8  | P2  | launch                  | RViz2 和 robot_state_publisher 加 IfCondition，headless 环境可跳过                                         | ❌    |
@@ -26,5 +26,5 @@
 
 ## 进度
 
-- 已完成：4 / 17
-- 下一项：#5 config/yaml 补全 kff 和 deriv_filter_alpha 参数到 YAML
+- 已完成：5 / 17
+- 下一项：#6 trajectory_generator on_action 回调加锁保护 current_joins_，防止数据竞争

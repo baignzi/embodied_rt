@@ -365,6 +365,7 @@ bool TrajectoryGenerator::apply_param(
 
 // ===== 动作回调 =====
 void TrajectoryGenerator::on_action(const std_msgs::msg::String::SharedPtr msg) {
+    std::lock_guard<std::mutex> lock(joints_mutex_);
     auto action = parse_action(msg->data);
     if (action.size() < 6) {
         RCLCPP_WARN(get_logger(), "Invalid action: need at least 6 DOF");

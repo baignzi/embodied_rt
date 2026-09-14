@@ -14,6 +14,7 @@
 #include <rcl_interfaces/srv/set_parameters_atomically.hpp>
 #include <vector>
 #include <string>
+#include <mutex>
 
 /**
  * @class TrajectoryGenerator
@@ -92,6 +93,7 @@ private:
     std::shared_ptr<MoveItImpl> moveit_;  ///< MoveIt2 pimpl 指针
 
     std::vector<double> current_joints_;  ///< 当前关节角（用于线性插值起点）
+    std::mutex joints_mutex_;             ///< 保护 current_joints_ 的互斥锁
 
     /// Linear fallback 参数
     double fallback_scale_;          ///< 动作增量缩放因子

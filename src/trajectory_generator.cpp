@@ -113,7 +113,7 @@ TrajectoryGenerator::TrajectoryGenerator()
 
             // 先全部校验，再批量应用（原子性）
             for (const auto& p : request->parameters) {
-                rclcpp::Parameter param(p);
+                rclcpp::Parameter param(p.name, p.value);
                 std::string reason;
                 if (!apply_param(param, reason, true)) {  // dry-run: 只校验不应用
                     result.successful = false;
@@ -125,7 +125,7 @@ TrajectoryGenerator::TrajectoryGenerator()
 
             // 校验通过，真正应用
             for (const auto& p : request->parameters) {
-                rclcpp::Parameter param(p);
+                rclcpp::Parameter param(p.name, p.value);
                 std::string reason;
                 apply_param(param, reason, false);  // 实际应用
             }

@@ -13,7 +13,7 @@ benchmark_node.py — EmbodiedRT 性能基准测试节点
 用法:
   终端1: ros2 launch embodied_rt embodied_rt.launch.py
   终端2: source install/setup.bash && python3 benchmark_node.py --duration 30
-  结果保存到 /tmp/embodied_rt_benchmark.json
+  结果保存到系统临时目录下的 embodied_rt_benchmark.json
 """
 
 import argparse
@@ -22,6 +22,8 @@ import json
 import statistics
 import threading
 import sys
+import os
+import tempfile
 from collections import deque
 from datetime import datetime
 
@@ -46,7 +48,7 @@ class BenchmarkNode(Node):
             '/joint_states': deque(maxlen=50000),
         }
         # 延迟统计
-        self.vla_receive_times = {}  # msg_id -> timestamp
+        self.vla_receive_times = deque(maxlen=10000)  # (msg_id, timestamp)
         self.traj_receive_times = {}
         self.control_receive_times = {}
 
@@ -91,7 +93,7 @@ class BenchmarkNode(Node):
         t = time.monotonic()
         msg_id = self.action_count
         self.action_count += 1
-        self.vla_receive_times[msg_id] = t
+        self.vla_receive_times.append((msg_id, t))
         self.topic_timestamps['/vla/action_cmd'].append(t)
         self.get_logger().debug(f'VLA action #{msg_id} received')
 
@@ -102,11 +104,9 @@ class BenchmarkNode(Node):
 
         # 找最近的 VLA 动作, 计算轨迹生成延迟
         if self.vla_receive_times:
-            latest_id = max(self.vla_receive_times.keys())
-            if latest_id in self.vla_receive_times:
-                vla_time = self.vla_receive_times[latest_id]
-                latency_ms = (t - vla_time) * 1000
-                self.traj_gen_latencies.append(latency_ms)
+            _, vla_time = self.vla_receive_times[-1]
+            latency_ms = (t - vla_time) * 1000
+            self.traj_gen_latencies.append(latency_ms)
 
             # 保存轨迹用于跟踪误差计算
             if msg.points:
@@ -125,12 +125,10 @@ class BenchmarkNode(Node):
 
         # 端到端延迟: VLA -> 控制
         if self.vla_receive_times:
-            latest_id = max(self.vla_receive_times.keys())
-            if latest_id in self.vla_receive_times:
-                vla_time = self.vla_receive_times[latest_id]
-                e2e_ms = (t - vla_time) * 1000
-                if e2e_ms < 10000:  # 过滤掉异常值
-                    self.e2e_latencies.append(e2e_ms)
+            _, vla_time = self.vla_receive_times[-1]
+            e2e_ms = (t - vla_time) * 1000
+            if e2e_ms < 10000:  # 过滤掉异常值
+                self.e2e_latencies.append(e2e_ms)
 
         # 跟踪误差: 目标位置 vs 实际位置
         if self.last_trajectory and self.last_trajectory.points:
@@ -294,7 +292,7 @@ class BenchmarkNode(Node):
         self.get_logger().info(f'    Actions/sec:           {self.action_count / elapsed:.2f}')
 
         # 保存 JSON
-        out_path = '/tmp/embodied_rt_benchmark.json'
+        out_path = os.path.join(tempfile.gettempdir(), 'embodied_rt_benchmark.json')
         with open(out_path, 'w') as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
         self.get_logger().info(f'\n  Report saved to: {out_path}')

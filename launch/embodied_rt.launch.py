@@ -3,6 +3,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 
 
@@ -19,6 +20,9 @@ def generate_launch_description():
             urdf_content = f.read()
 
     return LaunchDescription([
+        DeclareLaunchArgument('use_robot_state_publisher', default_value='true'),
+        DeclareLaunchArgument('use_rviz', default_value='true'),
+
         # --- 1. VLA推理节点 ---
         Node(
             package='embodied_rt',
@@ -64,6 +68,7 @@ def generate_launch_description():
             name='robot_state_publisher',
             parameters=[{'robot_description': urdf_content}],
             output='screen',
+            condition=IfCondition(LaunchConfiguration('use_robot_state_publisher')),
         ),
 
         # --- 6. RViz2 ---
@@ -75,5 +80,6 @@ def generate_launch_description():
                 get_package_share_directory('embodied_rt'),
                 'config', 'embodied_rt.rviz')],
             output='screen',
+            condition=IfCondition(LaunchConfiguration('use_rviz')),
         ),
     ])

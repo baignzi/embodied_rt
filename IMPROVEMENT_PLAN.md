@@ -13,7 +13,7 @@
 | 5  | P1  | config/yaml            | 补全 kff 和 deriv_filter_alpha 参数到 YAML；移除未使用的 frequency 参数                                          | ✅    |
 | 6  | P1  | trajectory_generator   | on_action 回调加锁保护 current_joins_，防止数据竞争                                                        | ✅    |
 | 7  | P1  | benchmark_node.py      | 输出路径用 os.path.join(tempfile.gettempdir(), ...) 替代硬编码 /tmp/；vla_receive_times 字典加 maxlen 防内存泄漏        | ✅    |
-| 8  | P2  | launch                  | RViz2 和 robot_state_publisher 加 IfCondition，headless 环境可跳过                                         | ❌    |
+| 8  | P2  | launch                  | RViz2 和 robot_state_publisher 加 IfCondition，headless 环境可跳过                                         | ✅    |
 | 9  | P2  | lock_free_ring_buffer  | push() 覆写路径注释说明 SPSC 语义 tradeoff，或改为 drop-new 策略                                             | ❌    |
 | 10 | P2  | vla_inference_node.py  | _obs_callback 加图像编码检查，非 RGB8 时转换或警告                                                         | ❌    |
 | 11 | P2  | safety_monitor         | 健康日志从 DEBUG 改为 INFO + 节流（每 N 次打印一次）                                                      | ❌    |
@@ -26,5 +26,5 @@
 
 ## 进度
 
-- 已完成：7 / 17
-- 下一项：#8 launch RViz2 和 robot_state_publisher 加 IfCondition，headless 环境可跳过
+- 已完成：8 / 17
+- 下一项：#9 lock_free_ring_buffer push() 覆写路径注释说明 SPSC 语义 tradeoff，或改为 drop-new 策略

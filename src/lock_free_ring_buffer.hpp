@@ -40,9 +40,14 @@ public:
     bool push(const T& item) {
         const std::size_t curr = head_.load(std::memory_order_relaxed);
         const std::size_t next = (curr + 1) & mask_;
-        // 如果buffer满，采用overwrite策略（丢旧动作）
+        // SPSC tradeoff: overwrite vs drop-new
+        // - overwrite（当前策略）：buffer 满时丢弃最旧数据，保证消费者始终拿到
+        //   生产者最新写入的值。适合控制场景，VLA 新决策应优先于旧动作。
+        // - drop-new：buffer 满时直接丢弃新数据，保证消费者不会遗漏任何旧数据。
+        //   若改为 drop-new，只需在此返回 false，不推进 tail。
+        // 注意：SPSC 语义下生产者/消费者不能阻塞对方，因此不能阻塞等待。
         if (next == tail_.load(std::memory_order_acquire)) {
-            // 推进tail，丢弃最旧的动作
+            // overwrite 路径：推进 tail，丢弃最旧的动作
             tail_.store((tail_.load(std::memory_order_relaxed) + 1) & mask_,
                         std::memory_order_release);
         }

@@ -171,7 +171,43 @@ class VLAInferenceNode(Node):
 
     def _obs_callback(self, msg):
         img = np.frombuffer(msg.data, dtype=np.uint8)
-        img = img.reshape(msg.height, msg.width, -1)[:, :, :3]
+
+        encoding = msg.encoding.lower()
+        if encoding == 'rgb8':
+            if img.size != msg.height * msg.width * 3:
+                self.get_logger().warn(
+                    f'RGB8 size mismatch: expected {msg.height*msg.width*3}, '
+                    f'got {img.size}')
+                return
+            img = img.reshape(msg.height, msg.width, 3)
+        elif encoding == 'bgr8':
+            if img.size != msg.height * msg.width * 3:
+                self.get_logger().warn(
+                    f'BGR8 size mismatch: expected {msg.height*msg.width*3}, '
+                    f'got {img.size}')
+                return
+            img = img.reshape(msg.height, msg.width, 3)[:, :, ::-1]
+        elif encoding == 'rgba8':
+            if img.size != msg.height * msg.width * 4:
+                self.get_logger().warn(
+                    f'RGBA8 size mismatch: expected {msg.height*msg.width*4}, '
+                    f'got {img.size}')
+                return
+            img = img.reshape(msg.height, msg.width, 4)[:, :, :3]
+        elif encoding == 'mono8':
+            if img.size != msg.height * msg.width:
+                self.get_logger().warn(
+                    f'Mono8 size mismatch: expected {msg.height*msg.width}, '
+                    f'got {img.size}')
+                return
+            img = np.stack(
+                [img.reshape(msg.height, msg.width)] * 3, axis=-1)
+        else:
+            self.get_logger().warn(
+                f'Unsupported encoding: {msg.encoding}. '
+                f'Expected rgb8/bgr8/rgba8/mono8. Using generic reshape.')
+            img = img.reshape(msg.height, msg.width, -1)[:, :, :3]
+
         from PIL import Image as PILImage
         pil_img = PILImage.fromarray(img)
         try:

@@ -20,11 +20,13 @@ public:
         this->declare_parameter("joint_upper", default_upper);
         this->declare_parameter("max_velocity", 2.0);
         this->declare_parameter("max_effort", 3.0);
+        this->declare_parameter("health_log_interval", 2000);
 
         joint_lower_ = this->get_parameter("joint_lower").as_double_array();
         joint_upper_ = this->get_parameter("joint_upper").as_double_array();
         max_velocity_ = this->get_parameter("max_velocity").as_double();
         max_effort_ = this->get_parameter("max_effort").as_double();
+        health_log_interval_ = this->get_parameter("health_log_interval").as_int();
 
         estop_pub_ = create_publisher<std_msgs::msg::Bool>(
             "/safety/estop", 1);
@@ -122,16 +124,17 @@ private:
                 "*** EMERGENCY STOP TRIGGERED (latched, call /safety/reset to clear) ***");
         }
 
-        // 每2秒打印一次健康状态
-        if (++health_counter_ >= 2000) {
+        // 每 N 次打印一次健康状态
+        if (++health_counter_ >= health_log_interval_) {
             health_counter_ = 0;
-            RCLCPP_DEBUG(get_logger(), "Safety check OK: %zu joints monitored", n);
+            RCLCPP_INFO(get_logger(), "Safety check OK: %zu joints monitored", n);
         }
     }
 
     std::vector<double> joint_lower_, joint_upper_;
     double max_velocity_{2.0};
     double max_effort_{3.0};
+    int health_log_interval_{2000};
     std::vector<double> prev_positions_;
     bool estop_triggered_{false};
     rclcpp::Time last_time_;

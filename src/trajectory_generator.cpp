@@ -232,7 +232,8 @@ void TrajectoryGenerator::plan_linear_fallback(
     // 梯形速度曲线：v_max = 1 / (1 - blend)，保证总位移为 1.0
     const double denom = blend * one_minus_blend;  // b * (1-b)
 
-    for (double t = 0.0; t <= fallback_duration_ + 1e-6; t += traj_dt_) {
+    for (int i = 0; i * traj_dt_ <= fallback_duration_; ++i) {
+        double t = i * traj_dt_;
         double alpha = t / fallback_duration_;
         // 平滑加减速（梯形速度曲线，位置与速度均连续）
         if (alpha < blend) {

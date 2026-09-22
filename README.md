@@ -254,6 +254,10 @@ ros2 run embodied_rt safety_monitor
 
 ```
 embodied_rt/
+├── .github/
+│   └── workflows/
+│       └── ci.yml              # GitHub Actions CI 配置
+├── .clang-format               # 代码格式化配置
 ├── CMakeLists.txt              # C++构建配置
 ├── package.xml                 # ROS2包描述
 ├── requirements.txt            # Python依赖
@@ -262,13 +266,18 @@ embodied_rt/
 │   └── embodied_rt.yaml        # 系统参数配置
 ├── launch/
 │   └── embodied_rt.launch.py   # 一键启动脚本
-└── src/
-    ├── vla_inference_node.py   # VLA推理节点（Python）
-    ├── trajectory_generator.hpp  # 轨迹生成器声明
-    ├── trajectory_generator.cpp  # 轨迹生成器实现
-    ├── real_time_controller.cpp  # 实时PID控制器
-    ├── safety_monitor.cpp        # 安全监控
-    └── lock_free_ring_buffer.hpp # 无锁环形缓冲区
+├── src/
+│   ├── benchmark_node.py       # 性能基准测试节点
+│   ├── vla_inference_node.py   # VLA推理节点（Python）
+│   ├── trajectory_generator.hpp  # 轨迹生成器声明
+│   ├── trajectory_generator.cpp  # 轨迹生成器实现
+│   ├── pid_controller.hpp      # PID 控制器
+│   ├── real_time_controller.cpp  # 实时PID控制器
+│   ├── safety_monitor.cpp      # 安全监控
+│   └── lock_free_ring_buffer.hpp # 无锁环形缓冲区
+└── test/
+    ├── test_pid.cpp            # PID 单元测试
+    └── test_trajectory.cpp     # 轨迹生成器单元测试
 ```
 
 ---

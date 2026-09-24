@@ -20,11 +20,11 @@
 | 12 | P2  | trajectory_generator   | 浮点循环改整数迭代消除累积误差：for (int i=0; i*dt<=duration; ++i)                                          | ✅    |
 | 13 | P2  | README.md              | 更新目录结构，补全 test/、pid_controller.hpp、benchmark_node.py、.github/、.clang-format                        | ✅    |
 | 14 | P2  | CMakeLists.txt         | 显式 find_package(rcl_interfaces)，不依赖传递依赖                                                        | ✅    |
-| 15 | P3  | project                | 添加 CHANGELOG.md + CONTRIBUTING.md                                                                    | ❌    |
+| 15 | P3  | project                | 添加 CHANGELOG.md + CONTRIBUTING.md                                                                    | ✅    |
 | 16 | P3  | project                | 添加 .clang-tidy 静态分析配置                                                                            | ❌    |
 | 17 | P3  | IMPROVEMENT_PLAN       | 标记旧计划 #11 和 #14 为完成（代码已实现）                                                                 | ❌    |
 
 ## 进度
 
-- 已完成：14 / 17
-- 下一项：#15 添加 CHANGELOG.md + CONTRIBUTING.md
+- 已完成：15 / 17
+- 下一项：#16 添加 .clang-tidy 静态分析配置

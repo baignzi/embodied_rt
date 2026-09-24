@@ -25,7 +25,7 @@ mkdir -p ~/embodied_rt_ws/src
 cd ~/embodied_rt_ws/src
 
 # 克隆仓库
-git clone https://github.com/your-org/embodied_rt.git
+git clone https://github.com/baignzi/embodied_rt.git
 cd ..
 
 # 安装 ROS2 依赖

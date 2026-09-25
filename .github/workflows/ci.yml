@@ -29,3 +29,11 @@ jobs:
           source /opt/ros/humble/setup.bash
           colcon build --packages-select embodied_rt --cmake-args -DBUILD_TESTING=OFF
         working-directory: ${{ github.workspace }}
+
+      - name: Static analysis
+        run: |
+          sudo apt install -y clang-tidy
+          source /opt/ros/humble/setup.bash
+          colcon build --packages-select embodied_rt --cmake-args -DBUILD_TESTING=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          find src/embodied_rt/src -type f \( -name '*.cpp' -o -name '*.hpp' \) -exec clang-tidy -p build/embodied_rt/ {} +
+        working-directory: ${{ github.workspace }}
